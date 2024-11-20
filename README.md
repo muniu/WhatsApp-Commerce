@@ -1,58 +1,105 @@
 # WhatsApp Commerce
- WhatsApp powered Small Business OS
+WhatsApp powered Small Business OS
 
-A production-ready WhatsApp commerce system leveraging WhatsApp Business API's native catalog feature, enabling businesses to manage orders through simple commands and automated workflows.
+A WhatsApp commerce system leveraging WhatsApp Business API's native catalog feature, enabling businesses to manage orders through simple commands and automated workflows.
 
-# Table of Contents
-
-* Features
-* Architecture
-* Prerequisites
-* Quick Start
-* Development Setup
-* Configuration
-* Command System
-* Event System
-* Monitoring
-* Troubleshooting
-* Testing
-* Deployment
-* Contributing
-* License
+## Table of Contents
+- [Features](#features)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Development Setup](#development-setup)
+- [Configuration](#configuration)
+- [Command System](#command-system)
+- [Event System](#event-system)
+- [Monitoring](#monitoring)
+- [Troubleshooting](#troubleshooting)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
-### Core Features
 
-* 🛍️ Native WhatsApp Catalog integration
-* 📦 Order management through WhatsApp
-* 🌍 Multi-language support (EN/SW)
-* 🔄 Event-driven architecture
-* 📊 Real-time monitoring
+### Core Features
+1. [x] 🛍️ Native WhatsApp Catalog integration
+2. [x] 📦 Order management through WhatsApp
+3. [ ] 🌍 Multi-language support (EN/SW)
+4. [ ] 🔄 Event-driven architecture
+5. [ ] 📊 Real-time monitoring
 
 ### Catalog Management
-
-* Automatic sync with WhatsApp Business Catalog
-* Multi-currency pricing
-* Multi-language product descriptions
-* Stock management
-* Image handling
+1. [x] WhatsApp Business Catalog sync
+2. [x] External catalog integration (Webhook/REST/Kafka)
+3. [x] Multi-currency pricing
+4. [x] Multi-language descriptions
+5. [x] Image handling
 
 ### Order Management
+1. [ ] Order creation from catalog items
+2. [ ] Status tracking
+3. [ ] Order history
+4. [ ] Cancellation handling
+5. [ ] Support integration
 
-* Order creation from catalog items
-* Status tracking
-* Order history
-* Cancellation handling
-* Support integration
+### External Catalog Integration
 
-### Supported Languages
+#### 1. Webhook Integration
+```bash
+POST /api/v1/catalog/webhook
+Content-Type: application/json
+X-API-Key: your-api-key
 
-* 🇬🇧 English
-* 🇰🇪 Swahili
+{
+  "action": "UPSERT|DELETE",
+  "items": [{
+    "externalId": "SKU123",
+    "names": {
+      "en": "Product Name",
+      "sw": "Jina la Bidhaa"
+    },
+    "price": 99.99,
+    "currency": "KES",
+    "imageUrl": "https://..."
+  }]
+}
+```
 
-## Architecture 
+#### 2. REST API
+```bash
+# Create/Update Products
+POST /api/v1/catalog/items
+PUT /api/v1/catalog/items/{id}
 
-TODO
+# Retrieve Products
+GET /api/v1/catalog/items
+GET /api/v1/catalog/items/{id}
+
+# Remove Products
+DELETE /api/v1/catalog/items/{id}
+```
+
+#### 3. Kafka Events
+Topic: `catalog-events`
+```json
+{
+  "eventType": "CATALOG_UPDATED",
+  "timestamp": "2024-11-20T10:00:00Z",
+  "payload": {
+    "action": "UPSERT|DELETE",
+    "items": [{
+      "externalId": "SKU123",
+      "names": {
+        "en": "Product Name",
+        "sw": "Jina la Bidhaa"
+      },
+      "price": 99.99,
+      "currency": "KES",
+      "imageUrl": "https://..."
+    }]
+  }
+}
+```
 
 ## Prerequisites
 
@@ -63,10 +110,6 @@ TODO
 * WhatsApp Business API access
 
 ## Quick Start
-
-Clone the repository
-
-
 
 1. **Clone the Repository**
 ```bash
@@ -81,9 +124,18 @@ cp .env.example .env
 
 Edit `.env` with your credentials:
 ```properties
+# WhatsApp Configuration
 WHATSAPP_BUSINESS_ACCOUNT_ID=your_account_id
 WHATSAPP_ACCESS_TOKEN=your_access_token
 WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
+
+# MongoDB Configuration
+MONGODB_URI=mongodb://localhost:27017/whatsapp_commerce
+
+# Kafka Configuration
+KAFKA_BROKERS=localhost:9092
+KAFKA_SCHEMA_REGISTRY=http://localhost:8081
+KAFKA_UI_PORT=8080
 ```
 
 3. **Start Services**
@@ -91,7 +143,24 @@ WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
 docker-compose up -d
 ```
 
-4. **Verify Installation**
+4. **Initialize Kafka Topics**
+```bash
+docker-compose exec kafka kafka-topics.sh \
+  --create \
+  --bootstrap-server localhost:9092 \
+  --replication-factor 1 \
+  --partitions 3 \
+  --topic catalog-events
+
+docker-compose exec kafka kafka-topics.sh \
+  --create \
+  --bootstrap-server localhost:9092 \
+  --replication-factor 1 \
+  --partitions 3 \
+  --topic order-events
+```
+
+5. **Verify Installation**
 ```bash
 # Check application health
 curl http://localhost:8080/actuator/health
@@ -144,13 +213,7 @@ app:
     - sw
 ```
 
-### Available Profiles
-- `dev`: Development configuration
-- `prod`: Production configuration
-- `test`: Testing configuration
-
-
-# Command System
+## Command System
 
 ### Available Commands
 ```
@@ -161,16 +224,6 @@ app:
 /help                 - Show available commands
 /support              - Start support chat
 /lang <en|sw>         - Change language
-```
-
-### Example Usage
-```
-Customer: /status ORD123
-Bot: Order #ORD123
-Status: In Progress
-Created: Jan 15, 2024
-Items: 2x Product A
-Total: KES 2,500
 ```
 
 ## Event System
@@ -205,11 +258,6 @@ Total: KES 2,500
 - API monitoring
 - Event processing
 
-#### Prometheus (http://localhost:9090)
-- Raw metrics
-- Query interface
-- Alert rules
-
 ### Key Metrics
 ```
 # Order Metrics
@@ -227,50 +275,6 @@ events_published_total
 events_consumed_total
 ```
 
-## Troubleshooting
-
-### Common Issues
-
-#### Webhook Verification
-```bash
-curl -X GET "http://localhost:8080/api/webhook\
-?hub.mode=subscribe\
-&hub.verify_token=your_token\
-&hub.challenge=challenge_string"
-```
-
-#### Kafka Connectivity
-```bash
-# List topics
-docker-compose exec kafka kafka-topics.sh \
-  --bootstrap-server localhost:9092 \
-  --list
-
-# View consumer groups
-docker-compose exec kafka kafka-consumer-groups.sh \
-  --bootstrap-server localhost:9092 \
-  --list
-```
-
-#### MongoDB Checks
-```bash
-# Access MongoDB shell
-docker-compose exec mongodb mongosh
-
-# Check indexes
-use whatsapp_commerce
-db.orders.getIndexes()
-```
-
-### Logging
-```yaml
-logging:
-  level:
-    com.whatsappcommerce: DEBUG
-    org.apache.kafka: INFO
-    org.mongodb: INFO
-```
-
 ## Testing
 
 ### Unit Tests
@@ -281,11 +285,6 @@ logging:
 ### Integration Tests
 ```bash
 ./mvnw verify -P integration-tests
-```
-
-### Load Tests
-```bash
-k6 run load-tests/order-flow.js
 ```
 
 ### API Tests
@@ -340,22 +339,13 @@ KAFKA_SERVERS=localhost:9092
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-### Development Guidelines
-- Follow Java coding standards
-- Write unit tests for new features
-- Update documentation
-- Add appropriate logging
-- Include monitoring metrics
-
 ## License
 
 This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
 
----
-
 ## Support
 
-- 📝 [Documentation](README.md)
+- 📝 [Documentation](docs/README.md)
 - 🐛 [Issue Tracker](https://github.com/muniu/whatsapp-commerce/issues)
 - 💬 [Discussion Forum](https://github.com/muniu/whatsapp-commerce/discussions)
 - 📧 [Support Email](mailto:me@kanairo.com)
